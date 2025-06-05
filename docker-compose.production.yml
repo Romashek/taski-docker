@@ -8,12 +8,10 @@ services:
   db:
     image: postgres:13.10
     env_file: .env
-    environment:
-      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - pg_data_production:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,14 +25,14 @@ services:
       db:
         condition: service_healthy
     command: >
-      sh -c "sleep 5 && 
+      sh -c "python manage.py wait_for_db &&
              python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             gunicorn taski.wsgi:application --bind 0.0.0.0:8000"
+             gunicorn --bind 0.0.0.0:8000 taski.wsgi"
 
   frontend:
     image: roman200015/taski_frontend
     env_file: .env
+    command: cp -r /app/build/. /frontend_static/
     volumes:
       - static_volume:/frontend_static
     depends_on:
