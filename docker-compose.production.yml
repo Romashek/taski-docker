@@ -1,32 +1,52 @@
+version: '3.8'
 
 volumes:
   pg_data_production:
   static_volume:
 
-# Всё отличие — заменяем build на image и указываем, какой образ использовать
 services:
   db:
     image: postgres:13.10
     env_file: .env
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
       - pg_data_production:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
-    image: roman200015/taski_backend # Качаем с Docker Hub
+    image: roman200015/taski_backend
     env_file: .env
     volumes:
       - static_volume:/backend_static
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "sleep 5 && 
+             python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn taski.wsgi:application --bind 0.0.0.0:8000"
+
   frontend:
-    image: roman200015/taski_frontend  # Качаем с Docker Hub
+    image: roman200015/taski_frontend
     env_file: .env
-    command: cp -r /app/build/. /frontend_static/
     volumes:
       - static_volume:/frontend_static
+    depends_on:
+      - backend
+
   gateway:
-    image: roman200015/taski_gateway  # Качаем с Docker Hub
+    image: roman200015/taski_gateway
     env_file: .env
     volumes:
       - static_volume:/staticfiles/
     ports:
-      - 8000:80
+      - 80:80
+    depends_on:
+      - frontend
+      - backend
