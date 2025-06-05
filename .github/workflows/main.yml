@@ -140,8 +140,8 @@ jobs:
         key: ${{ secrets.SSH_KEY }}
         passphrase: ${{ secrets.SSH_PASSPHRASE }}
         source: |
-          docker-compose.production.yml
-          .env
+          ./docker-compose.production.yml
+          ./.env
         target: "taski_for_praktikum/"
         strip_components: 1
     - name: Copy env file via ssh
